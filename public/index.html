@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Equipment Booking System</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <!-- Socket.io -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <!-- Moment.js for time tracking -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Landing Layout -->
+        <div id="landingLayout" class="landing-container">
+            <div class="landing-content">
+                <div class="hero-section">
+                    <h1 class="landing-title highlight-text">Lab Equipment Management System</h1>
+                    <p class="landing-subtitle">We are here to assist with laboratory equipment management.</p>
+                </div>
+                
+                <div class="portal-cards">
+                    <!-- Student Card -->
+                    <div class="portal-card" onclick="goToLogin('student')">
+                        <div class="portal-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        </div>
+                        <h3>Student Portal</h3>
+                        <p>Book equipment, manage returns, and view your laboratory history.</p>
+                        <span class="portal-btn">Login / Register <span>&rarr;</span></span>
+                    </div>
+
+                    <!-- Assistant Card -->
+                    <div class="portal-card" onclick="goToLogin('lab_assistant')">
+                        <div class="portal-icon" style="color: var(--success-color);">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        </div>
+                        <h3>Lab Assistant Portal</h3>
+                        <p>Track live bookings, issue warnings, and manage equipment status.</p>
+                        <span class="portal-btn">Login to Dashboard <span>&rarr;</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auth Layout -->
+        <div id="authLayout" class="auth-container d-none">
+            <!-- Login -->
+            <div id="loginPage" class="auth-card page active">
+                <button class="btn-icon back-btn" onclick="showLandingPage()" style="position: absolute; top: 1.5rem; left: 1.5rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+                <h2 id="loginTitle">Welcome Back</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="loginEmail" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+                    <p class="text-center mt-3" style="font-size: 0.9rem;">
+                        Don't have an account? <a href="#" onclick="showPage('registerPage')">Create one</a>
+                    </p>
+                </form>
+            </div>
+
+            <!-- Register -->
+            <div id="registerPage" class="auth-card page">
+                <h2>Create Account</h2>
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="regRole" class="form-control" onchange="toggleRegFields()" required>
+                            <option value="student">Student</option>
+                            <option value="lab_assistant">Lab Assistant</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="regName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="regEmail" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Department Name</label>
+                        <select id="regDept" class="form-control" required>
+                            <option value="Physics">Physics</option>
+                            <option value="CSE">CSE</option>
+                            <option value="EEE">EEE</option>
+                            <option value="Math">Math</option>
+                            <option value="Mechanical">Mechanical</option>
+                            <option value="Chemistry">Chemistry</option>
+                        </select>
+                    </div>
+                    <!-- Student Only Fields -->
+                    <div id="studentFields">
+                        <div class="form-group">
+                            <label>Department ID (e.g. 12CSE34)</label>
+                            <input type="text" id="regDeptId" class="form-control" pattern="\d{2}[A-Za-z]{3}\d{2}" title="Must be 2 numbers, 3 letters, 2 numbers">
+                        </div>
+                        <div class="form-group">
+                            <label>Session</label>
+                            <input type="text" id="regSession" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="regPassword" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Register</button>
+                    <p class="text-center mt-3" style="font-size: 0.9rem;">
+                        Already have an account? <a href="#" onclick="showPage('loginPage')">Sign in</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dashboard Layout -->
+        <div id="dashboardLayout" class="app-container d-none">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                    <h2>Lab Manager</h2>
+                </div>
+                <div class="nav-links" id="sidebarNav">
+                    <!-- Nav items dynamically injected -->
+                </div>
+                <div class="sidebar-footer">
+                    <button onclick="handleLogout()" class="btn btn-sm" style="width: 100%; border: 1px solid var(--border-color); background: linear-gradient(135deg, var(--danger-color), #be123c); color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">Log Out</button>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="main-wrapper">
+                <header class="topbar">
+                    <div class="topbar-left">
+                        <h3 id="topbarTitle" class="highlight-text">Dashboard</h3>
+                    </div>
+                    <div class="topbar-right">
+                        <div class="notification-bell" onclick="toggleNotifications()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                            <span class="badge" id="notifBadge">0</span>
+                        </div>
+                        <div class="user-profile-dropdown">
+                            <div class="avatar" id="userAvatar">U</div>
+                            <span id="userNameDisplay">User Name</span>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Notifications Dropdown -->
+                <div id="notifDropdown" class="notif-dropdown">
+                    <div class="notif-header">Notifications</div>
+                    <div class="notif-list" id="notifList">
+                        <!-- Notifications appended here -->
+                    </div>
+                </div>
+
+                <div class="main-content">
+                    
+                    <!-- STUDENT PAGES -->
+                    <!-- Book Equipment -->
+                    <div id="bookEquipmentPage" class="page">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Book Equipment</h3>
+                            </div>
+                            <form id="bookingForm">
+                                <div class="form-group">
+                                    <label>Select Equipment</label>
+                                    <select id="bookSelectEq" class="form-control" required></select>
+                                </div>
+                                <p class="text-secondary" style="font-size: 0.9rem; margin-bottom: 1rem;">
+                                    Note: You have exactly 2 minutes to return the equipment after booking. Overdue items incur a 20 TK per minute fine.
+                                </p>
+                                <button type="submit" class="btn btn-primary">Book Now</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- My Bookings -->
+                    <div id="myBookingsPage" class="page">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Active & Recent Bookings</h3>
+                            </div>
+                            <div id="studentBookingsContainer">
+                                <!-- Cards injected here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Profile -->
+                    <div id="profilePage" class="page">
+                        <div class="card" style="max-width: 600px;">
+                            <div class="card-header">
+                                <h3>My Profile</h3>
+                            </div>
+                            <form id="profileForm">
+                                <div class="form-group">
+                                    <label>Name</label>
+                                    <input type="text" id="profName" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email (Read-only)</label>
+                                    <input type="email" id="profEmail" class="form-control" disabled>
+                                </div>
+                                <div id="profStudentFields" class="d-none">
+                                    <div class="form-group">
+                                        <label>Department ID (Read-only)</label>
+                                        <input type="text" id="profDeptId" class="form-control" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Session</label>
+                                        <input type="text" id="profSession" class="form-control">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update Profile</button>
+                            </form>
+                        </div>
+                    </div>
+
+
+                    <!-- LAB ASSISTANT PAGES -->
+                    <!-- Central Dashboard -->
+                    <div id="assistantDashboardPage" class="page">
+                        
+                        <div class="dashboard-grid" id="assistantStats">
+                            <div class="stat-card">
+                                <span class="label">Active Equipments</span>
+                                <span class="value text-primary" id="statActive">0</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="label">Overdue</span>
+                                <span class="value text-danger" id="statOverdue">0</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="label">Returned</span>
+                                <span class="value text-success" id="statReturned">0</span>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="highlight-text">Live Equipment Tracking</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th class="highlight-text">Equipment</th>
+                                            <th class="highlight-text">Student</th>
+                                            <th class="highlight-text">Dept ID</th>
+                                            <th class="highlight-text">Time Left / Fine</th>
+                                            <th class="highlight-text">Status Bar</th>
+                                            <th class="highlight-text">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="assistantTrackingTable">
+                                        <!-- Rows injected here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accounts/Finance Page -->
+                    <div id="financePage" class="page">
+                        <div class="dashboard-grid">
+                            <div class="stat-card">
+                                <span class="label">Total Fine Collected</span>
+                                <span class="value text-primary">0 TK</span> <!-- Simplified for scope -->
+                            </div>
+                            <div class="stat-card">
+                                <span class="label">Pending Fines</span>
+                                <span class="value text-warning" id="statPendingFines">0 TK</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+
+        <!-- Toast Notifications Container -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- Custom Modal -->
+        <div id="customModal" class="modal-overlay d-none">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Confirm Action</h3>
+                    <button class="btn-icon" onclick="closeModal()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+                <div class="modal-body" id="modalMessage">
+                    Are you sure you want to proceed?
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="modalConfirmBtn">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
