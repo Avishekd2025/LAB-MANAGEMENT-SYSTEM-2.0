@@ -1,48 +1,33 @@
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
-const path = require('path');
+require('dotenv').config();
+const mysql = require('mysql2');
 
-let dbInstance = null;
-
-async function getDb() {
-  if (!dbInstance) {
-    dbInstance = await open({
-      filename: path.join(__dirname, '../db/database.sqlite'),
-      driver: sqlite3.Database
-    });
-    // Enable foreign keys
-    await dbInstance.run('PRAGMA foreign_keys = ON');
-  }
-  return dbInstance;
-}
+const pool = mysql.createPool({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'mysite',
+  waitForConnections: true,
+  connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT, 10) || 10,
+  queueLimit: 0
+});
 
 module.exports = {
   getConnection: async () => {
-    const db = await getDb();
+    // Return a lightweight wrapper so existing code can call `conn.query(sql, params)` and `conn.release()`
     return {
-      query: async (sql, params = []) => {
-        // Simple regex to determine query type
-        const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
-        
-        try {
-          if (isSelect) {
-            const rows = await db.all(sql, params);
-            return [rows, []];
-          } else {
-            const result = await db.run(sql, params);
-            // Mock MySQL return object structure
-            result.insertId = result.lastID;
-            result.affectedRows = result.changes;
-            return [result, []];
-          }
-        } catch (error) {
-          console.error("DB Error on query:", sql);
-          throw error;
-        }
+      query: (sql, params = []) => {
+        return new Promise((resolve, reject) => {
+          pool.query(sql, params, (err, results, fields) => {
+            if (err) return reject(err);
+            resolve([results, fields]);
+          });
+        });
       },
       release: () => {
-        // No-op for SQLite
+        // No-op when using pool.query; kept for API compatibility
       }
     };
-  }
+  },
+  // Export raw pool for advanced use if needed
+  pool
 };
