@@ -11,6 +11,10 @@ const equipmentRoutes = require('./routes/equipmentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
+app.disable('x-powered-by');
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: process.env.CORS_ORIGIN || '*' }
@@ -67,5 +71,5 @@ app.use((err, req, res, next) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
